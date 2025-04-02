@@ -36,7 +36,7 @@
             margin-top: 50px;
         }
 
-        input[type="number"], button, input[type="file"] {
+        input[type="number"], button, input[type="file"], select {
             padding: 10px;
             margin: 10px;
             font-size: 1.2em;
@@ -163,9 +163,16 @@
         <p><strong>Seleziona il tempo del quiz (in minuti):</strong></p>
         <input type="number" id="tempo" max="5" min="1">
         
-        <!-- Input per caricare il file CSV -->
+        <!-- Elenco a cascata per selezionare il file CSV -->
         <div class="file-container">
-            <input type="file" id="fileInput" accept=".csv, .xlsx" onchange="handleFileSelect(event)">
+            <label for="fileSelect">Seleziona un file CSV:</label>
+            <select id="fileSelect" onchange="handleFileSelectFromDropdown(event)">
+                <option value="null">Scegli un opzione</option>
+                <option value="file1.csv">Nautica</option>
+                <option value="custom">Carica un file dal tuo dispositivo</option>
+            </select>
+            <br>
+            <input type="file" id="fileInput" accept=".csv, .xlsx" onchange="handleFileSelect(event)" style="display: none;">
             <p>Carica il file CSV con le domande (Formato richiesto: Domanda, Opzione1, Opzione2, Opzione3, Opzione4, RispostaCorretta)</p>
             <a href="#" class="download-link" onclick="scaricaEsempio()">Scarica un esempio di file</a>
         </div>
@@ -234,6 +241,49 @@ Cosa significa HTML?,Hyper Text Markup Language,High Text Markup Language,Hyper 
                     header: false
                 });
             }
+        }
+
+        function handleFileSelectFromDropdown(event) {
+            const selectedValue = event.target.value;
+            if (selectedValue === "custom") {
+                document.getElementById('fileInput').style.display = 'inline-block';
+            } else {
+                document.getElementById('fileInput').style.display = 'none';
+                // Logica per caricare file dalla repository (esempio CSV1 o CSV2)
+                loadCSVFromRepository(selectedValue);
+            }
+        }
+
+        function loadCSVFromRepository(fileName) {
+            // Caricamento dei file CSV dalla repository (si presuppone siano accessibili tramite URL)
+            const url = `https://raw.githubusercontent.com/MattiaAlbano/MattiaAlbano.github.io/main/${fileName}`; // Sostituisci con il percorso corretto
+            fetch(url)
+                .then(response => response.text())
+                .then(data => {
+                    Papa.parse(data, {
+                        complete: function(results) {
+                            quiz = results.data.map(row => {
+                                const opzioni = row.slice(1, row.length - 1); // Escludiamo la domanda e la risposta corretta
+                                const corretta = row[row.length - 1]; // L'ultima colonna è la risposta corretta
+                                return {
+                                    domanda: row[0], // La prima colonna è la domanda
+                                    opzioni: opzioni,
+                                    corretta: corretta
+                                };
+                            });
+
+                            maxDomande = quiz.length;
+                            document.getElementById('max-domande').textContent = maxDomande;
+
+                            if (maxDomande > 5) {
+                                document.getElementById('num-domande').setAttribute('max', 5);
+                            } else {
+                                document.getElementById('num-domande').setAttribute('max', maxDomande);
+                            }
+                        },
+                        header: false
+                    });
+                });
         }
 
         function iniziaQuiz() {
