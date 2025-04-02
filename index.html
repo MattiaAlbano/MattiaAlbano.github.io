@@ -299,8 +299,10 @@ Cosa significa HTML?,Hyper Text Markup Language,High Text Markup Language,Hyper 
         }
 
         function mostraPopup(message) {
-            document.getElementById('popup-message').textContent = message;
-            document.getElementById('popup').style.display = 'flex';
+            const popup = document.getElementById('popup');
+            const popupMessage = document.getElementById('popup-message');
+            popupMessage.innerHTML = message;  // Usa innerHTML per interpretare HTML
+            popup.style.display = 'flex';
         }
 
         function chiudiPopup() {
