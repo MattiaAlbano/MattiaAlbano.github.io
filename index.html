@@ -1,85 +1,335 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modifica Google Sheet</title>
-    <script src="https://apis.google.com/js/api.js"></script>
+    <title>Quiz Interattivo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script> <!-- Libreria PapaParse -->
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f7f7;
+            color: #333;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 2em;
+            position: relative;
+        }
+
+        #timer {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 1.5em;
+        }
+
+        #setup-container {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        input[type="number"], button, input[type="file"] {
+            padding: 10px;
+            margin: 10px;
+            font-size: 1.2em;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            background-color: #fff;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #quiz-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+        }
+
+        .question-container {
+            background-color: #fff;
+            margin: 30px 0;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 90vw;
+            max-width: none;
+            text-align: left;
+            min-height: 300px;
+        }
+
+        .question {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+        }
+
+        .options {
+            margin-left: 30px;
+            font-size: 1.1em;
+        }
+
+        .option {
+            margin: 15px 0;
+        }
+
+        .question-container button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+
+        .question-container button:hover {
+            background-color: #45a049;
+        }
+
+        .popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 350px;
+            text-align: center;
+        }
+
+        .popup button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px;
+            margin-top: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .popup button:hover {
+            background-color: #45a049;
+        }
+
+        .file-container {
+            margin-top: 20px;
+        }
+
+        .download-link {
+            margin-top: 15px;
+            color: #4CAF50;
+            text-decoration: none;
+            font-size: 1.2em;
+        }
+
+        .download-link:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <h1>Modifica un Google Sheet</h1>
-    <button id="authorize_button" onclick="handleAuthClick()">Accedi con Google</button>
-    <button id="signout_button" onclick="handleSignoutClick()" style="display:none;">Disconnettiti</button>
 
-    <div>
-        <label for="cell">Cella (es. A1): </label>
-        <input type="text" id="cell" placeholder="A1">
+    <header>
+        Quiz Interattivo
+        <div id="timer">00:00</div>
+    </header>
+
+    <div id="setup-container">
+        <p><strong>Seleziona il numero di domande:</strong> (Max <span id="max-domande">0</span>)</p>
+        <input type="number" id="num-domande" max="5" min="1">
+        
+        <p><strong>Seleziona il tempo del quiz (in minuti):</strong> (Max 5 minuti)</p>
+        <input type="number" id="tempo" max="5" min="1">
+        
+        <!-- Input per caricare il file CSV -->
+        <div class="file-container">
+            <input type="file" id="fileInput" accept=".csv, .xlsx" onchange="handleFileSelect(event)">
+            <p>Carica il file CSV con le domande (Formato richiesto: Domanda, Opzione1, Opzione2, Opzione3, Opzione4, RispostaCorretta)</p>
+            <a href="#" class="download-link" onclick="scaricaEsempio()">Scarica un esempio di file</a>
+        </div>
+
+        <button onclick="iniziaQuiz()">Inizia Quiz</button>
     </div>
-    <div>
-        <label for="value">Valore: </label>
-        <input type="text" id="value" placeholder="Nuovo Valore">
+
+    <div id="quiz-container" style="display: none;">
+        <div id="questions-container"></div>
     </div>
-    <button onclick="updateSheet()">Aggiorna Sheet</button>
+
+    <div class="popup" id="popup">
+        <div class="popup-content">
+            <p id="popup-message"></p>
+            <button onclick="chiudiPopup()">OK</button>
+        </div>
+    </div>
 
     <script>
-        const CLIENT_ID = '789770911830-vjamlu7iep2t5j00degk2lolmpod0jiq.apps.googleusercontent.com';
-        const API_KEY = 'AIzaSyCdFLpfl76eZvK9e1o5jcaMr8D1u2c0y04';
-        const SHEET_ID = '10UmYAzI3s0dHKhbtZT2cYM1DMLWV3Oyw01s7ROoo_nc';
-        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+        let quiz = [];
+        let totalTime;
+        let timer;
+        let maxDomande;
 
-        function handleClientLoad() {
-            gapi.load('client:auth2', initClient);
+        // Funzione per scaricare un file CSV di esempio
+        function scaricaEsempio() {
+            const esempioCSV = `Domanda,Opzione1,Opzione2,Opzione3,Opzione4,RispostaCorretta
+Qual è la capitale d'Italia?,Roma,Milano,Napoli,Torino,Roma
+Qual è il colore del cielo?,Blu,Verde,Rosso,Giallo,Blu
+Qual è la somma di 2 + 2?,1,3,4,5,4
+Chi ha scritto '1984'?,George Orwell,Aldous Huxley,J.K. Rowling,F. Scott Fitzgerald,George Orwell
+Cosa significa HTML?,Hyper Text Markup Language,High Text Markup Language,Hyper Tabular Markup Language,None of the above,Hyper Text Markup Language`;
+
+            const blob = new Blob([esempioCSV], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'esempio_quiz.csv';
+            link.click();
         }
 
-        function initClient() {
-            gapi.client.init({
-                apiKey: API_KEY,
-                clientId: CLIENT_ID,
-                discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-                scope: SCOPES,
-            }).then(() => {
-                gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-                updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-            });
-        }
+        // Funzione per gestire il caricamento del file CSV
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    complete: function(results) {
+                        quiz = results.data.map(row => {
+                            const opzioni = row.slice(1, row.length - 1); // Escludiamo la domanda e la risposta corretta
+                            const corretta = row[row.length - 1]; // L'ultima colonna è la risposta corretta
+                            return {
+                                domanda: row[0], // La prima colonna è la domanda
+                                opzioni: opzioni,
+                                corretta: corretta
+                            };
+                        });
 
-        function updateSigninStatus(isSignedIn) {
-            if (isSignedIn) {
-                document.getElementById('authorize_button').style.display = 'none';
-                document.getElementById('signout_button').style.display = 'block';
-            } else {
-                document.getElementById('authorize_button').style.display = 'block';
-                document.getElementById('signout_button').style.display = 'none';
+                        maxDomande = quiz.length;
+                        document.getElementById('max-domande').textContent = maxDomande;
+
+                        if (maxDomande > 5) {
+                            document.getElementById('num-domande').setAttribute('max', 5);
+                        } else {
+                            document.getElementById('num-domande').setAttribute('max', maxDomande);
+                        }
+                    },
+                    header: false
+                });
             }
         }
 
-        function handleAuthClick() {
-            gapi.auth2.getAuthInstance().signIn();
+        function iniziaQuiz() {
+            const numDomande = parseInt(document.getElementById('num-domande').value);
+            totalTime = parseInt(document.getElementById('tempo').value) * 60; // Converti il tempo in minuti a secondi
+
+            if (isNaN(numDomande) || isNaN(totalTime)) {
+                alert("Per favore, inserisci un numero valido di domande e tempo.");
+                return;
+            }
+
+            // Seleziona domande casuali e randomizza le risposte per ogni domanda
+            quiz = shuffleArray(quiz).slice(0, numDomande);
+            quiz.forEach(domanda => {
+                domanda.opzioni = shuffleArray(domanda.opzioni);
+            });
+
+            document.getElementById('setup-container').style.display = 'none';
+            document.getElementById('quiz-container').style.display = 'flex';
+
+            mostraDomande();
+            iniziaTimer();
         }
 
-        function handleSignoutClick() {
-            gapi.auth2.getAuthInstance().signOut();
-        }
+        function mostraDomande() {
+            const questionsContainer = document.getElementById('questions-container');
+            questionsContainer.innerHTML = '';
 
-        function updateSheet() {
-            const cell = document.getElementById('cell').value;
-            const value = document.getElementById('value').value;
-
-            gapi.client.sheets.spreadsheets.values.update({
-                spreadsheetId: SHEET_ID,
-                range: cell,
-                valueInputOption: 'USER_ENTERED',
-                resource: {
-                    values: [[value]]
-                }
-            }).then((response) => {
-                alert(`La cella ${cell} è stata aggiornata con successo!`);
-            }).catch((error) => {
-                console.error("Errore durante l'aggiornamento dello sheet:", error);
+            quiz.forEach((domanda, index) => {
+                const questionElement = document.createElement('div');
+                questionElement.classList.add('question-container');
+                questionElement.innerHTML = `
+                    <div class="question">${domanda.domanda}</div>
+                    <div class="options">
+                        ${domanda.opzioni.map((opzione, i) => `
+                            <div class="option">
+                                <input type="radio" name="question${index}" value="${opzione}" id="option${index}-${i}">
+                                <label for="option${index}-${i}">${opzione}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button onclick="confermaRisposta(${index})">Conferma Risposta</button>
+                `;
+                questionsContainer.appendChild(questionElement);
             });
         }
 
-        handleClientLoad();
+        function confermaRisposta(index) {
+            const selectedOption = document.querySelector(`input[name="question${index}"]:checked`);
+            if (!selectedOption) {
+                alert("Per favore, seleziona una risposta.");
+                return;
+            }
+
+            const rispostaUtente = selectedOption.value;
+            const rispostaCorretta = quiz[index].corretta;
+
+            if (rispostaUtente === rispostaCorretta) {
+                mostraPopup("Risposta corretta!");
+            } else {
+                mostraPopup(`Risposta sbagliata! La risposta corretta è: ${rispostaCorretta}`);
+            }
+        }
+
+        function mostraPopup(message) {
+            document.getElementById('popup-message').textContent = message;
+            document.getElementById('popup').style.display = 'flex';
+        }
+
+        function chiudiPopup() {
+            document.getElementById('popup').style.display = 'none';
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function iniziaTimer() {
+            const timerDisplay = document.getElementById('timer');
+
+            timer = setInterval(function() {
+                if (totalTime <= 0) {
+                    clearInterval(timer);
+                    alert("Tempo scaduto!");
+                    return;
+                }
+                const minutes = Math.floor(totalTime / 60);
+                const seconds = totalTime % 60;
+                timerDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                totalTime--;
+            }, 1000);
+        }
     </script>
 </body>
 </html>
