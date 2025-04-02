@@ -255,7 +255,7 @@ Cosa significa HTML?,Hyper Text Markup Language,High Text Markup Language,Hyper 
 
         function loadCSVFromRepository(fileName) {
             // Caricamento dei file CSV dalla repository (si presuppone siano accessibili tramite URL)
-            const url = `https://github.com/MattiaAlbano/MattiaAlbano.github.io/blob/main/${fileName}`; // Sostituisci con il percorso corretto
+            const url = `https://raw.githubusercontent.com/MattiaAlbano/MattiaAlbano.github.io/main/${fileName}`; // Sostituisci con il percorso corretto
             fetch(url)
                 .then(response => response.text())
                 .then(data => {
