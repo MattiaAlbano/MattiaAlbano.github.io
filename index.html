@@ -160,7 +160,7 @@
         <p><strong>Seleziona il numero di domande:</strong> (Max <span id="max-domande">0</span>)</p>
         <input type="number" id="num-domande" max="5" min="1">
         
-        <p><strong>Seleziona il tempo del quiz (in minuti):</strong> (Max 5 minuti)</p>
+        <p><strong>Seleziona il tempo del quiz (in minuti):</strong></p>
         <input type="number" id="tempo" max="5" min="1">
         
         <!-- Input per caricare il file CSV -->
@@ -292,9 +292,9 @@ Cosa significa HTML?,Hyper Text Markup Language,High Text Markup Language,Hyper 
             const rispostaCorretta = quiz[index].corretta;
 
             if (rispostaUtente === rispostaCorretta) {
-                mostraPopup("Risposta corretta!");
+                mostraPopup("<strong>Risposta corretta!<strong>");
             } else {
-                mostraPopup(`Risposta sbagliata! La risposta corretta è: ${rispostaCorretta}`);
+                mostraPopup(`<strong>Risposta sbagliata!<strong> La risposta corretta è: <strong>${rispostaCorretta}<strong>`);
             }
         }
 
